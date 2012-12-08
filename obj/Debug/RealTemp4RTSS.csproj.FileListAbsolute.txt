@@ -1,9 +1,0 @@
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\bin\Debug\RealTemp4RTSS.exe.config
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\obj\Debug\RealTemp4RTSS.csprojResolveAssemblyReference.cache
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\obj\Debug\RealTemp4RTSS.Properties.Resources.resources
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\obj\Debug\RealTemp4RTSS.csproj.GenerateResource.Cache
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\bin\Debug\RealTemp4RTSS.exe
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\bin\Debug\RealTemp4RTSS.pdb
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\obj\Debug\RealTemp4RTSS.exe
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\obj\Debug\RealTemp4RTSS.pdb
-c:\users\damien\documents\visual studio 2012\Projects\RealTemp4RTSS\obj\Debug\RealTemp4RTSS.RealTemp4RTSS.resources
