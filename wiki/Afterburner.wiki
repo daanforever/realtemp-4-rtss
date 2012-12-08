@@ -1,0 +1,10 @@
+#summary MSI Afterburner
+
+= Introduction =
+
+MSI's Afterburner is a piece of software which provides monitoring and tweaking of MSI's graphics cards and it is based on RivaTuner.
+
+
+= Details =
+
+See the [http://event.msi.com/vga/afterburner/overview.htm Afterburner homepage] for more information.
