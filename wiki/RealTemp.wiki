@@ -1,0 +1,9 @@
+#summary Real Temp
+
+= Introduction =
+
+Real Temp is a temperature monitoring application for Intel Core-series processors.
+
+= Details =
+
+See the [http://www.techpowerup.com/realtemp/ Real Temp Homepage] for more information.
