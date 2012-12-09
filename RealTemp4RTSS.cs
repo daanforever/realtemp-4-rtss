@@ -307,8 +307,8 @@ namespace RealTemp4RTSS
                 {
                     isClosing = true;
 
-                    if (osdSlot != -1 && rtssController != null)
-                        rtssController.ClearOSDValue(osdSlot);
+                    if (rtssController != null)
+                        rtssController.Dispose();
 
                     Application.Exit();
                 }
