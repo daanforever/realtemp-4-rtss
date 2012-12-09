@@ -29,8 +29,8 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.ListViewGroup listViewGroup1 = new System.Windows.Forms.ListViewGroup("Temperatures", System.Windows.Forms.HorizontalAlignment.Left);
-            System.Windows.Forms.ListViewGroup listViewGroup2 = new System.Windows.Forms.ListViewGroup("Other", System.Windows.Forms.HorizontalAlignment.Left);
+            System.Windows.Forms.ListViewGroup listViewGroup3 = new System.Windows.Forms.ListViewGroup("Temperatures", System.Windows.Forms.HorizontalAlignment.Left);
+            System.Windows.Forms.ListViewGroup listViewGroup4 = new System.Windows.Forms.ListViewGroup("Other", System.Windows.Forms.HorizontalAlignment.Left);
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(RealTemp4RTSS));
             this.lsvAvailableMetrics = new System.Windows.Forms.ListView();
             this.colMetric = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -49,9 +49,10 @@
             this.grpStatus = new System.Windows.Forms.GroupBox();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.lblOSDStatus = new System.Windows.Forms.Label();
+            this.lblRealTemp = new System.Windows.Forms.Label();
             this.lblOSD = new System.Windows.Forms.Label();
             this.lblRealTempStatus = new System.Windows.Forms.Label();
-            this.lblRealTemp = new System.Windows.Forms.Label();
+            this.mnuShow = new System.Windows.Forms.ToolStripMenuItem();
             this.notifyIconMenu.SuspendLayout();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
@@ -70,13 +71,13 @@
             this.colMetric,
             this.colValue});
             this.lsvAvailableMetrics.FullRowSelect = true;
-            listViewGroup1.Header = "Temperatures";
-            listViewGroup1.Name = "lvgTemps";
-            listViewGroup2.Header = "Other";
-            listViewGroup2.Name = "lvgOther";
+            listViewGroup3.Header = "Temperatures";
+            listViewGroup3.Name = "lvgTemps";
+            listViewGroup4.Header = "Other";
+            listViewGroup4.Name = "lvgOther";
             this.lsvAvailableMetrics.Groups.AddRange(new System.Windows.Forms.ListViewGroup[] {
-            listViewGroup1,
-            listViewGroup2});
+            listViewGroup3,
+            listViewGroup4});
             this.lsvAvailableMetrics.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
             this.lsvAvailableMetrics.HideSelection = false;
             this.lsvAvailableMetrics.Location = new System.Drawing.Point(6, 22);
@@ -110,14 +111,15 @@
             // notifyIconMenu
             // 
             this.notifyIconMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.mnuShow,
             this.mnuExit});
             this.notifyIconMenu.Name = "notifyIconMenu";
-            this.notifyIconMenu.Size = new System.Drawing.Size(93, 26);
+            this.notifyIconMenu.Size = new System.Drawing.Size(104, 48);
             // 
             // mnuExit
             // 
             this.mnuExit.Name = "mnuExit";
-            this.mnuExit.Size = new System.Drawing.Size(92, 22);
+            this.mnuExit.Size = new System.Drawing.Size(103, 22);
             this.mnuExit.Text = "Exit";
             this.mnuExit.Click += new System.EventHandler(this.mnuExit_Click);
             // 
@@ -251,6 +253,18 @@
             this.lblOSDStatus.TabIndex = 7;
             this.lblOSDStatus.Text = "OK";
             // 
+            // lblRealTemp
+            // 
+            this.lblRealTemp.BackColor = System.Drawing.SystemColors.Control;
+            this.lblRealTemp.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblRealTemp.Location = new System.Drawing.Point(1, 1);
+            this.lblRealTemp.Margin = new System.Windows.Forms.Padding(0);
+            this.lblRealTemp.Name = "lblRealTemp";
+            this.lblRealTemp.Size = new System.Drawing.Size(74, 16);
+            this.lblRealTemp.TabIndex = 4;
+            this.lblRealTemp.Text = "RealTemp:";
+            this.lblRealTemp.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            // 
             // lblOSD
             // 
             this.lblOSD.BackColor = System.Drawing.SystemColors.Control;
@@ -272,17 +286,12 @@
             this.lblRealTempStatus.TabIndex = 5;
             this.lblRealTempStatus.Text = "Polling...";
             // 
-            // lblRealTemp
+            // mnuShow
             // 
-            this.lblRealTemp.BackColor = System.Drawing.SystemColors.Control;
-            this.lblRealTemp.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblRealTemp.Location = new System.Drawing.Point(1, 1);
-            this.lblRealTemp.Margin = new System.Windows.Forms.Padding(0);
-            this.lblRealTemp.Name = "lblRealTemp";
-            this.lblRealTemp.Size = new System.Drawing.Size(74, 16);
-            this.lblRealTemp.TabIndex = 4;
-            this.lblRealTemp.Text = "RealTemp:";
-            this.lblRealTemp.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            this.mnuShow.Name = "mnuShow";
+            this.mnuShow.Size = new System.Drawing.Size(103, 22);
+            this.mnuShow.Text = "Show";
+            this.mnuShow.Click += new System.EventHandler(this.notifyIcon_DoubleClick);
             // 
             // RealTemp4RTSS
             // 
@@ -302,7 +311,6 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "RealTemp4RTSS";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.RealTemp4RTSS_FormClosing);
-            this.Load += new System.EventHandler(this.RealTemp4RTSS_Load);
             this.Move += new System.EventHandler(this.RealTemp4RTSS_Move);
             this.notifyIconMenu.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
@@ -339,6 +347,7 @@
         private System.Windows.Forms.Label lblRealTemp;
         private System.Windows.Forms.Label lblOSD;
         private System.Windows.Forms.Label lblRealTempStatus;
+        private System.Windows.Forms.ToolStripMenuItem mnuShow;
     }
 }
 
