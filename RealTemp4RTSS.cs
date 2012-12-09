@@ -30,6 +30,21 @@ namespace RealTemp4RTSS
 
             lblRealTempStatus.Text = "Initialising...";
             lblOSDStatus.Text = "Initialising...";
+
+            lsvAvailableMetrics.EnableDoubleBuffer();
+            try
+            {
+                rtssController = new RTSSController();
+                lblOSDStatus.Text = "OK";
+            }
+            catch
+            {
+                // RTSS is currently unavailable or uncommunicative; don't stop as if it becomes responsive later
+                // we can re-establish communication then...
+                lblOSDStatus.Text = "Unavailable";
+            }
+            LoadSettings();
+            realTempRefresh.Enabled = true;
         }
 
         private void PopulateMetrics()
@@ -133,6 +148,23 @@ namespace RealTemp4RTSS
             Properties.Settings.Default.StartMinimised = chkStartMinimised.Checked;
 
             Properties.Settings.Default.Save();
+        }
+
+        private void AllowClose(ref bool allow)
+        {
+            if (!isClosing)
+            {
+                if (allow || MessageBox.Show(this, "Are you sure you want to exit?", Application.ProductName, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    isClosing = true;
+                    allow = true;
+
+                    if (rtssController != null)
+                        rtssController.Dispose();
+
+                    Application.Exit();
+                }
+            }
         }
 
         private void realTempRefresh_Tick(object sender, EventArgs e)
@@ -283,37 +315,21 @@ namespace RealTemp4RTSS
 
         private void RealTemp4RTSS_Load(object sender, EventArgs e)
         {
-            lsvAvailableMetrics.EnableDoubleBuffer();
-            try
-            {
-                rtssController = new RTSSController();
-                lblOSDStatus.Text = "OK";
-            }
-            catch
-            {
-                // RTSS is currently unavailable or uncommunicative; don';t stop as if it becomes responsive later
-                // we can re-establish communication then...
-                lblOSDStatus.Text = "Unavailable";
-            }
-            LoadSettings();
-            realTempRefresh.Enabled = true;
+            
         }
 
         private void RealTemp4RTSS_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (!isClosing)
             {
-                if (MessageBox.Show(this, "Are you sure you want to exit?", Application.ProductName, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                {
-                    isClosing = true;
+                bool allow = false;
 
-                    if (rtssController != null)
-                        rtssController.Dispose();
+                if (e.CloseReason == CloseReason.TaskManagerClosing || e.CloseReason == CloseReason.WindowsShutDown)
+                    allow = true;
 
-                    Application.Exit();
-                }
-                else
-                    e.Cancel = true;
+                AllowClose(ref allow);
+
+                e.Cancel = !allow;
             }
         }
 
@@ -353,12 +369,9 @@ namespace RealTemp4RTSS
 
         private void mnuExit_Click(object sender, EventArgs e)
         {
-            isClosing = true;
+            bool allow = false;
 
-            if (rtssController != null)
-                rtssController.Dispose();
-
-            Application.Exit();
+            AllowClose(ref allow);
         }
     }
 }
