@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -10,6 +11,20 @@ namespace RealTemp4RTSS
 {
     public class RTSSController : IDisposable
     {
+        public enum Status
+        {
+            [Description("Unknown")]
+            Unknown,
+            [Description("Unavailable")]
+            ServiceUnavailable,
+            [Description("Service Outdated")]
+            ServiceOutdated,
+            [Description("Unknown Error")]
+            UnspecifiedIssue,
+            [Description("OK")]
+            OK
+        }
+
         private MemoryMappedFile _mmf = null;
         private MemoryMappedViewAccessor _view = null;
         private string _appId = null;
@@ -38,37 +53,72 @@ namespace RealTemp4RTSS
             ValidateUniqueAppId();
         }
 
+        public Status GetStatus()
+        {
+            return Refresh(false);
+        }
+
         public void Refresh()
         {
-            _view.Read<Interop.RTSS_SHARED_MEMORY>(0, out Snapshot);
+            Refresh(true);
+        }
 
+        private Status Refresh(bool allowThrow)
+        {
+            Status result = Status.Unknown;
+            try
+            {
+                _view.Read<Interop.RTSS_SHARED_MEMORY>(0, out Snapshot);
+            }
+            catch
+            {
+                result = Status.UnspecifiedIssue;
+                if (allowThrow)
+                    throw;
+            }
             if (Snapshot.dwSignature != Interop.VALID_SIGNATURE)
             {
-                throw new InvalidOperationException("RTSS is unavailable at this time");
+                result = Status.ServiceUnavailable;
+                if (allowThrow)
+                    throw new InvalidOperationException("RTSS is unavailable at this time");
             }
             RTSSVersion = (Snapshot.dwVersion >> 16) + ((float)(Snapshot.dwVersion & 0x0000FFFF) / 10f);
 
             if (RTSSVersion < 2.0f)
             {
-                throw new InvalidOperationException("RTSS version is too old; only version 2.0 and newer are supported");
+                result = Status.ServiceOutdated;
+                if (allowThrow)
+                    throw new InvalidOperationException("RTSS version is too old; only version 2.0 and newer are supported");
             }
             var tempSlots = new List<KeyValuePair<string, string>>((int)Snapshot.dwOSDArrSize);
-
-            for (int osdSlot = 0; osdSlot < Snapshot.dwOSDArrSize; osdSlot++)
+            try
             {
-                Interop.RTSS_SHARED_MEMORY_OSD_ENTRY osdEntry;
-                try
+                for (int osdSlot = 0; osdSlot < Snapshot.dwOSDArrSize; osdSlot++)
                 {
-                    _view.Read<Interop.RTSS_SHARED_MEMORY_OSD_ENTRY>(Snapshot.dwOSDArrOffset + (Snapshot.dwOSDEntrySize * osdSlot), out osdEntry);
-                    tempSlots.Add(new KeyValuePair<string, string>(osdEntry.szOSDOwner.ToString(), osdEntry.szOSD.ToString()));
+                    Interop.RTSS_SHARED_MEMORY_OSD_ENTRY osdEntry;
+                    try
+                    {
+                        _view.Read<Interop.RTSS_SHARED_MEMORY_OSD_ENTRY>(Snapshot.dwOSDArrOffset + (Snapshot.dwOSDEntrySize * osdSlot), out osdEntry);
+                        tempSlots.Add(new KeyValuePair<string, string>(osdEntry.szOSDOwner.ToString(), osdEntry.szOSD.ToString()));
+                    }
+                    catch (Exception ex)
+                    {
+                        // Couldn't get the information for this slot so just put the exception message in it instead so it looks "filled".
+                        tempSlots.Add(new KeyValuePair<string, string>("@Exception", ex.Message));
+                    }
                 }
-                catch (Exception ex)
-                {
-                    // Couldn't get the information for this slot so just put the exception message in it instead so it looks "filled".
-                    tempSlots.Add(new KeyValuePair<string, string>("@Exception", ex.Message));
-                }
+                OSDSlots = tempSlots;
             }
-            OSDSlots = tempSlots;
+            catch
+            {
+                result = Status.UnspecifiedIssue;
+                if (allowThrow)
+                    throw;
+            }
+            if (result == Status.Unknown)
+                result = Status.OK;
+
+            return result;
         }
 
         public int SetOSDValue(string value)

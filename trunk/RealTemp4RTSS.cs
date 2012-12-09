@@ -12,22 +12,24 @@ namespace RealTemp4RTSS
 {
     public partial class RealTemp4RTSS : Form
     {
+        private const int MAX_RTSS_COMMUNICATION_ERRORS = 10;
+
         private RealTemp realTemp = null;
         private RTSSController rtssController = null;
         private int osdSlot = -1;
         private bool isClosing = false;
         private bool isChangingSettings = true;
+        private int rtssCommunicationErrors = 0;
 
         public RealTemp4RTSS()
         {
             InitializeComponent();
-
-            rtssController = new RTSSController();
+            
             realTemp = RealTemp.GetInstance();
             PopulateMetrics();
 
-            lsvAvailableMetrics.EnableDoubleBuffer();
-            realTempRefresh.Enabled = true;
+            lblRealTempStatus.Text = "Initialising...";
+            lblOSDStatus.Text = "Initialising...";
         }
 
         private void PopulateMetrics()
@@ -141,47 +143,55 @@ namespace RealTemp4RTSS
             {
                 if (realTemp.IsRealTempAvailable())
                 {
+                    lblRealTempStatus.Text = "Polling...";
+
                     if (Visible)
                     {
                         int coreCount = realTemp.GetCoreCount();
-
-                        switch ((RealTemp.RealTempControlID)lvi.Tag)
+                        if (coreCount > 0)
                         {
-                            case RealTemp.RealTempControlID.CoreZeroTemp:
-                                lvi.SubItems[1].Text = realTemp.GetCoreTemperature(0).ToString();
-                                break;
-                            case RealTemp.RealTempControlID.CoreOneTemp:
-                                if (coreCount > 1)
-                                    lvi.SubItems[1].Text = realTemp.GetCoreTemperature(1).ToString();
-                                else
-                                    lvi.SubItems[1].Text = "N/A";
-                                break;
-                            case RealTemp.RealTempControlID.CoreTwoTemp:
-                                if (coreCount > 2)
-                                    lvi.SubItems[1].Text = realTemp.GetCoreTemperature(2).ToString();
-                                else
-                                    lvi.SubItems[1].Text = "N/A";
-                                break;
-                            case RealTemp.RealTempControlID.CoreThreeTemp:
-                                if (coreCount > 3)
-                                    lvi.SubItems[1].Text = realTemp.GetCoreTemperature(3).ToString();
-                                else
-                                    lvi.SubItems[1].Text = "N/A";
-                                break;
-                            case RealTemp.RealTempControlID.TemperatureUnit:
-                                lvi.SubItems[1].Text = realTemp.GetHighestCoreTemperature().ToString();
-                                break;
-                            case RealTemp.RealTempControlID.Load:
-                                lvi.SubItems[1].Text = realTemp.GetLoad() + "%";
-                                break;
-                            case RealTemp.RealTempControlID.Frequency:
-                                if (lvi.Name.EndsWith("mhz"))
-                                    lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.MHz).ToString();
-                                else if (lvi.Name.EndsWith("ghz"))
-                                    lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.GHz).ToString();
-                                else
-                                    lvi.SubItems[1].Text = realTemp.GetFrequency().ToString();
-                                break;
+                            switch ((RealTemp.RealTempControlID)lvi.Tag)
+                            {
+                                case RealTemp.RealTempControlID.CoreZeroTemp:
+                                    lvi.SubItems[1].Text = realTemp.GetCoreTemperature(0).ToString();
+                                    break;
+                                case RealTemp.RealTempControlID.CoreOneTemp:
+                                    if (coreCount > 1)
+                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(1).ToString();
+                                    else
+                                        lvi.SubItems[1].Text = "N/A";
+                                    break;
+                                case RealTemp.RealTempControlID.CoreTwoTemp:
+                                    if (coreCount > 2)
+                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(2).ToString();
+                                    else
+                                        lvi.SubItems[1].Text = "N/A";
+                                    break;
+                                case RealTemp.RealTempControlID.CoreThreeTemp:
+                                    if (coreCount > 3)
+                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(3).ToString();
+                                    else
+                                        lvi.SubItems[1].Text = "N/A";
+                                    break;
+                                case RealTemp.RealTempControlID.TemperatureUnit:
+                                    lvi.SubItems[1].Text = realTemp.GetHighestCoreTemperature().ToString();
+                                    break;
+                                case RealTemp.RealTempControlID.Load:
+                                    lvi.SubItems[1].Text = realTemp.GetLoad() + "%";
+                                    break;
+                                case RealTemp.RealTempControlID.Frequency:
+                                    if (lvi.Name.EndsWith("mhz"))
+                                        lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.MHz).ToString();
+                                    else if (lvi.Name.EndsWith("ghz"))
+                                        lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.GHz).ToString();
+                                    else
+                                        lvi.SubItems[1].Text = realTemp.GetFrequency().ToString();
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            lvi.SubItems[1].Text = "N/A";
                         }
                     }
                     if (lvi.Checked)
@@ -196,16 +206,57 @@ namespace RealTemp4RTSS
                 else
                 {
                     lvi.SubItems[1].Text = "N/A";
+                    lblRealTempStatus.Text = "Unavailable";
                 }
             }
-            if (rtssString.Length > 0)
+            if (rtssController == null)
             {
-                osdSlot = rtssController.SetOSDValue(osdSlot, "CPU \t: " + realTemp.GetFormattedString(rtssString.ToString()));
+                try
+                {
+                    rtssController = new RTSSController();
+                    lblOSDStatus.Text = "OK";
+                }
+                catch
+                {
+                    // RTSS is still unavailable or uncommunacative; ignore - we'll try next time.
+                    lblOSDStatus.Text = "Unavailable";
+                }
             }
-            else if (osdSlot != -1)
+            if (rtssController != null)
             {
-                rtssController.ClearOSDValue(osdSlot);
-                osdSlot = -1;
+                try
+                {
+                    rtssCommunicationErrors = 0;
+
+                    if (rtssString.Length > 0)
+                    {
+                        osdSlot = rtssController.SetOSDValue(osdSlot, "CPU \t: " + realTemp.GetFormattedString(rtssString.ToString()));
+                        lblOSDStatus.Text = "OK";
+                    }
+                    else if (osdSlot != -1)
+                    {
+                        rtssController.ClearOSDValue(osdSlot);
+                        osdSlot = -1;
+                        lblOSDStatus.Text = "OK";
+                    }
+                    else
+                    {
+                        lblOSDStatus.Text = rtssController.GetStatus().GetDescription();
+                    }
+                }
+                catch
+                {
+                    lblOSDStatus.Text = "Unavailable";
+
+                    // Something went wrong when communicating with RTSS...
+                    rtssCommunicationErrors++;
+                    // This may actually cause more trouble as if it manages to reconnect to the existing
+                    // RTSS instance its shared memory will still be intact and hence our AppId will be
+                    // in-use... so we won't be allowed to do anything.  I'm not sure whether it's
+                    // RivaTuner (Afterburner, etc.) that maintain it or RTSS itself... lets hope the later!
+                    if (rtssCommunicationErrors >= MAX_RTSS_COMMUNICATION_ERRORS)
+                        rtssController = null;
+                }
             }
         }
 
@@ -232,7 +283,20 @@ namespace RealTemp4RTSS
 
         private void RealTemp4RTSS_Load(object sender, EventArgs e)
         {
+            lsvAvailableMetrics.EnableDoubleBuffer();
+            try
+            {
+                rtssController = new RTSSController();
+                lblOSDStatus.Text = "OK";
+            }
+            catch
+            {
+                // RTSS is currently unavailable or uncommunicative; don';t stop as if it becomes responsive later
+                // we can re-establish communication then...
+                lblOSDStatus.Text = "Unavailable";
+            }
             LoadSettings();
+            realTempRefresh.Enabled = true;
         }
 
         private void RealTemp4RTSS_FormClosing(object sender, FormClosingEventArgs e)
@@ -243,7 +307,7 @@ namespace RealTemp4RTSS
                 {
                     isClosing = true;
 
-                    if (osdSlot != -1)
+                    if (osdSlot != -1 && rtssController != null)
                         rtssController.ClearOSDValue(osdSlot);
 
                     Application.Exit();
@@ -291,7 +355,7 @@ namespace RealTemp4RTSS
         {
             isClosing = true;
 
-            if (osdSlot != -1)
+            if (osdSlot != -1 && rtssController != null)
                 rtssController.ClearOSDValue(osdSlot);
 
             Application.Exit();
