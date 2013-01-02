@@ -93,6 +93,10 @@ namespace RealTemp4RTSS
                 lvi.Group = lsvAvailableMetrics.Groups["lvgOther"];
                 lvi.SubItems.Add("...");
                 lvi.Tag = RealTemp.RealTempControlID.Frequency;
+
+                lvi = lsvAvailableMetrics.Items.Add("time", "Current Time", -1);
+                lvi.Group = lsvAvailableMetrics.Groups["lvgOther"];
+                lvi.SubItems.Add("...");
             }
             finally
             {
@@ -177,62 +181,81 @@ namespace RealTemp4RTSS
                 {
                     lblRealTempStatus.Text = "Polling...";
 
-                    if (Visible)
+                    if (lvi.Tag != null)
                     {
-                        int coreCount = realTemp.GetCoreCount();
-                        if (coreCount > 0)
+                        if (Visible)
                         {
-                            switch ((RealTemp.RealTempControlID)lvi.Tag)
+                            int coreCount = realTemp.GetCoreCount();
+                            if (coreCount > 0)
                             {
-                                case RealTemp.RealTempControlID.CoreZeroTemp:
-                                    lvi.SubItems[1].Text = realTemp.GetCoreTemperature(0).ToString();
-                                    break;
-                                case RealTemp.RealTempControlID.CoreOneTemp:
-                                    if (coreCount > 1)
-                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(1).ToString();
-                                    else
-                                        lvi.SubItems[1].Text = "N/A";
-                                    break;
-                                case RealTemp.RealTempControlID.CoreTwoTemp:
-                                    if (coreCount > 2)
-                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(2).ToString();
-                                    else
-                                        lvi.SubItems[1].Text = "N/A";
-                                    break;
-                                case RealTemp.RealTempControlID.CoreThreeTemp:
-                                    if (coreCount > 3)
-                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(3).ToString();
-                                    else
-                                        lvi.SubItems[1].Text = "N/A";
-                                    break;
-                                case RealTemp.RealTempControlID.TemperatureUnit:
-                                    lvi.SubItems[1].Text = realTemp.GetHighestCoreTemperature().ToString();
-                                    break;
-                                case RealTemp.RealTempControlID.Load:
-                                    lvi.SubItems[1].Text = realTemp.GetLoad() + "%";
-                                    break;
-                                case RealTemp.RealTempControlID.Frequency:
-                                    if (lvi.Name.EndsWith("mhz"))
-                                        lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.MHz).ToString();
-                                    else if (lvi.Name.EndsWith("ghz"))
-                                        lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.GHz).ToString();
-                                    else
-                                        lvi.SubItems[1].Text = realTemp.GetFrequency().ToString();
-                                    break;
+                                switch ((RealTemp.RealTempControlID)lvi.Tag)
+                                {
+                                    case RealTemp.RealTempControlID.CoreZeroTemp:
+                                        lvi.SubItems[1].Text = realTemp.GetCoreTemperature(0).ToString();
+                                        break;
+                                    case RealTemp.RealTempControlID.CoreOneTemp:
+                                        if (coreCount > 1)
+                                            lvi.SubItems[1].Text = realTemp.GetCoreTemperature(1).ToString();
+                                        else
+                                            lvi.SubItems[1].Text = "N/A";
+                                        break;
+                                    case RealTemp.RealTempControlID.CoreTwoTemp:
+                                        if (coreCount > 2)
+                                            lvi.SubItems[1].Text = realTemp.GetCoreTemperature(2).ToString();
+                                        else
+                                            lvi.SubItems[1].Text = "N/A";
+                                        break;
+                                    case RealTemp.RealTempControlID.CoreThreeTemp:
+                                        if (coreCount > 3)
+                                            lvi.SubItems[1].Text = realTemp.GetCoreTemperature(3).ToString();
+                                        else
+                                            lvi.SubItems[1].Text = "N/A";
+                                        break;
+                                    case RealTemp.RealTempControlID.TemperatureUnit:
+                                        lvi.SubItems[1].Text = realTemp.GetHighestCoreTemperature().ToString();
+                                        break;
+                                    case RealTemp.RealTempControlID.Load:
+                                        lvi.SubItems[1].Text = realTemp.GetLoad() + "%";
+                                        break;
+                                    case RealTemp.RealTempControlID.Frequency:
+                                        if (lvi.Name.EndsWith("mhz"))
+                                            lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.MHz).ToString();
+                                        else if (lvi.Name.EndsWith("ghz"))
+                                            lvi.SubItems[1].Text = realTemp.GetFrequency(RealTemp.FrequencyUnit.GHz).ToString();
+                                        else
+                                            lvi.SubItems[1].Text = realTemp.GetFrequency().ToString();
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                lvi.SubItems[1].Text = "N/A";
                             }
                         }
-                        else
+                        if (lvi.Checked)
                         {
-                            lvi.SubItems[1].Text = "N/A";
+                            if (rtssString.Length > 0)
+                                rtssString.Append(", ");
+                            rtssString.Append("{" + lvi.Name + "}");
+                            if ((RealTemp.RealTempControlID)lvi.Tag == RealTemp.RealTempControlID.Load)
+                                rtssString.Append(" %");
                         }
                     }
-                    if (lvi.Checked)
+                    else
                     {
-                        if (rtssString.Length > 0)
-                            rtssString.Append(", ");
-                        rtssString.Append("{" + lvi.Name + "}");
-                        if ((RealTemp.RealTempControlID)lvi.Tag == RealTemp.RealTempControlID.Load)
-                            rtssString.Append(" %");
+                        switch (lvi.Name)
+                        {
+                            case "time":
+                                if (Visible)
+                                    lvi.SubItems[1].Text = DateTime.Now.ToShortTimeString();
+                                if (lvi.Checked)
+                                {
+                                    if (rtssString.Length > 0)
+                                        rtssString.Append("\r\n");
+                                    rtssString.Append("TIME \t: " + DateTime.Now.ToShortTimeString());
+                                }
+                                break;
+                        }
                     }
                 }
                 else
