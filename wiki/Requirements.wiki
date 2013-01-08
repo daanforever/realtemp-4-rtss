@@ -1,0 +1,8 @@
+#summary System Requirements
+#labels Featured
+
+= System Requirements =
+
+  * RealTemp 3.6 or higher
+  * Afterburner 2.0 or higher
+  * Microsoft .NET framework 4.0 or higher
