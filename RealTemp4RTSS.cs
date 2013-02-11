@@ -4,9 +4,12 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using WinTasks = Microsoft.Win32.TaskScheduler;
 
 namespace RealTemp4RTSS
 {
@@ -20,6 +23,7 @@ namespace RealTemp4RTSS
         private bool isClosing = false;
         private bool isChangingSettings = true;
         private int rtssCommunicationErrors = 0;
+        private bool hasChangedTaskSettings = false;
 
         public RealTemp4RTSS()
         {
@@ -111,6 +115,11 @@ namespace RealTemp4RTSS
             notifyIcon.Visible = true;
         }
 
+        [System.Runtime.InteropServices.DllImport("user32", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+        static extern int SendMessage(IntPtr hWnd, UInt32 Msg, int wParam, IntPtr lParam);
+
+        const UInt32 BCM_SETSHIELD = 0x160C;
+
         public void LoadSettings()
         {
             isChangingSettings = true;
@@ -125,11 +134,64 @@ namespace RealTemp4RTSS
                     else
                         lvi.Checked = false;
                 }
+                var currentIdentity = WindowsIdentity.GetCurrent();
+
+                LoadTaskSettings(currentIdentity);
+                
+                radStartForCurrentUser.Text = currentIdentity.Name;
                 chkStartMinimised.Checked = Properties.Settings.Default.StartMinimised;
+                chkNotifyUpdates.Checked = Properties.Settings.Default.NotifyNewVersions;
             }
             finally
             {
                 isChangingSettings = false;
+            }
+        }
+
+        private void LoadTaskSettings(WindowsIdentity currentIdentity)
+        {
+            using (WinTasks.TaskService ts = new WinTasks.TaskService())
+            {
+                chkStartWithWindows.Checked = false;
+                chkStartWithWindows.Enabled = true;
+                radStartForCurrentUser.Checked = false;
+                radStartForAllUsers.Checked = false;
+
+                WinTasks.Task task = ts.FindTask(Application.ProductName, false);
+                if (task == null)
+                {
+                    pnlStartupOptions.Enabled = false;
+                }
+                else
+                {
+                    WinTasks.Trigger trigger = task.Definition.Triggers.First();
+                    if (trigger != null && trigger.TriggerType == WinTasks.TaskTriggerType.Logon)
+                    {
+                        WinTasks.LogonTrigger logonTrigger = (WinTasks.LogonTrigger)trigger;
+                        if (logonTrigger.UserId == null)
+                        {
+                            radStartForAllUsers.Checked = true;
+                            chkStartWithWindows.Checked = true;
+                        }
+                        else if (string.Equals(logonTrigger.UserId, currentIdentity.Name, StringComparison.InvariantCultureIgnoreCase) ||
+                                 string.Equals(logonTrigger.UserId, currentIdentity.User.Value, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            radStartForCurrentUser.Checked = true;
+                            chkStartWithWindows.Checked = true;
+                        }
+                        else
+                        {
+                            chkStartWithWindows.Checked = true;
+                            chkStartWithWindows.Enabled = false;
+                            pnlStartupOptions.Enabled = false;
+                        }
+                    }
+                    pnlStartupOptions.Enabled = true;
+                }
+                if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                {
+                    SendMessage(btnOK.Handle, BCM_SETSHIELD, 0, (IntPtr)(radStartForAllUsers.Checked ? 1 : 0));
+                }
             }
         }
 
@@ -150,8 +212,20 @@ namespace RealTemp4RTSS
                 }
             }
             Properties.Settings.Default.StartMinimised = chkStartMinimised.Checked;
+            Properties.Settings.Default.NotifyNewVersions = chkNotifyUpdates.Checked;
 
             Properties.Settings.Default.Save();
+
+            if (hasChangedTaskSettings)
+            {
+                hasChangedTaskSettings = false;
+
+                if (!TaskPersistance.PersistTask(chkStartWithWindows.Checked, radStartForAllUsers.Checked))
+                {
+                    MessageBox.Show(this, "The startup task could not be saved. This could be due to not have the required security privilages.", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    LoadTaskSettings(WindowsIdentity.GetCurrent());
+                }
+            }
         }
 
         private void AllowClose(ref bool allow)
@@ -164,8 +238,13 @@ namespace RealTemp4RTSS
                     allow = true;
 
                     if (rtssController != null)
-                        rtssController.Dispose();
-
+                    {
+                        try
+                        {
+                            rtssController.Dispose();
+                        }
+                        catch { }
+                    }
                     Application.Exit();
                 }
             }
@@ -313,6 +392,19 @@ namespace RealTemp4RTSS
                         rtssController = null;
                 }
             }
+            if (Properties.Settings.Default.NotifyNewVersions && Properties.Settings.Default.LastVersionCheck.Date.AddDays(14) <= DateTime.Today)
+            {
+                Properties.Settings.Default.LastVersionCheck = DateTime.Now;
+                Properties.Settings.Default.Save();
+
+                Version latestVersion;
+                if (IsNewVersionAvailable(out latestVersion))
+                {
+                    notifyIcon.ShowBalloonTip(5000, "Update Available", "Version " + latestVersion.ToString() + " is available to download", ToolTipIcon.Info);
+                    notifyIcon.BalloonTipClicked += btnUpdateCheck_Click;
+                    notifyIcon.BalloonTipClosed += notifyIcon_UpdateCheck_BalloonTipClosed;
+                }
+            }
         }
 
         private void RealTemp4RTSS_Move(object sender, EventArgs e)
@@ -358,6 +450,11 @@ namespace RealTemp4RTSS
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
+            if (grpAdvancedOptions.Visible)
+            {
+                grpAdvancedOptions.Hide();
+                btnAdvanced.Enabled = true;
+            }
             btnOK.Enabled = false;
             btnCancel.Enabled = false;
 
@@ -384,6 +481,11 @@ namespace RealTemp4RTSS
 
         private void btnOK_Click(object sender, EventArgs e)
         {
+            if (grpAdvancedOptions.Visible)
+            {
+                grpAdvancedOptions.Hide();
+                btnAdvanced.Enabled = true;
+            }
             btnOK.Enabled = false;
             btnCancel.Enabled = false;
 
@@ -395,6 +497,104 @@ namespace RealTemp4RTSS
             bool allow = false;
 
             AllowClose(ref allow);
+        }
+
+        private void btnAdvanced_Click(object sender, EventArgs e)
+        {
+            btnAdvanced.Enabled = false;
+            grpAdvancedOptions.BringToFront();
+            grpAdvancedOptions.Show();
+            btnCancel.Enabled = true;
+        }
+
+        private void chkStartWithWindows_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!isChangingSettings)
+            {
+                hasChangedTaskSettings = true;
+                pnlStartupOptions.Enabled = (chkStartWithWindows.Checked && chkStartWithWindows.Enabled);
+                radStartForCurrentUser.Checked = true;
+                btnOK.Enabled = true;
+                btnCancel.Enabled = true;
+            }
+        }
+
+        private void radStartForCurrentUser_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!isChangingSettings && radStartForCurrentUser.Checked)
+            {
+                hasChangedTaskSettings = true;
+
+                SendMessage(btnOK.Handle, BCM_SETSHIELD, 0, (IntPtr)0);
+                btnOK.Enabled = true;
+                btnCancel.Enabled = true;
+            }
+        }
+
+        private void radStartForAllUsers_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!isChangingSettings && radStartForAllUsers.Checked)
+            {
+                hasChangedTaskSettings = true;
+
+                if (!new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                {
+                    SendMessage(btnOK.Handle, BCM_SETSHIELD, 0, (IntPtr)(radStartForAllUsers.Checked ? 1 : 0));
+                }
+                btnOK.Enabled = true;
+                btnCancel.Enabled = true;
+            }
+        }
+
+        private void btnUpdateCheck_Click(object sender, EventArgs e)
+        {
+            notifyIcon.BalloonTipClicked -= btnUpdateCheck_Click;
+            Properties.Settings.Default.LastVersionCheck = DateTime.Now;
+            Properties.Settings.Default.Save();
+
+            Version latestVersion;
+            if (IsNewVersionAvailable(out latestVersion))
+            {
+                if (MessageBox.Show("Version " + latestVersion.ToString() + " is available to download.\r\n\r\nWould you like to go to the download page?",
+                    Application.ProductName, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    System.Diagnostics.Process.Start("http://code.google.com/p/realtemp-4-rtss/downloads/list");
+                }
+            }
+        }
+
+        private void notifyIcon_UpdateCheck_BalloonTipClosed(object sender, EventArgs e)
+        {
+            notifyIcon.BalloonTipClicked -= btnUpdateCheck_Click;
+            notifyIcon.BalloonTipClosed -= notifyIcon_UpdateCheck_BalloonTipClosed;
+        }
+
+        private static bool IsNewVersionAvailable(out Version latestVersion)
+        {
+            // We really should do this in another thread so as not to hang the UI... oh well
+            using (System.Net.WebClient webClient = new System.Net.WebClient())
+            {
+                webClient.BaseAddress = "http://code.google.com/p/realtemp-4-rtss/wiki/Changelog";
+                webClient.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+                string htmlChangelog = webClient.DownloadString(webClient.BaseAddress);
+                Version currentVersion = System.Reflection.Assembly.GetEntryAssembly().GetName().Version;
+
+                if (Version.TryParse(Regex.Match(htmlChangelog, "Version (?<number>\\d+\\.{1,1}\\d+)").Groups["number"].Value, out latestVersion) &&
+                    latestVersion.CompareTo(currentVersion) > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void chkNotifyUpdates_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!isChangingSettings)
+            {
+                btnOK.Enabled = true;
+                btnCancel.Enabled = true;
+            }
         }
     }
 }
