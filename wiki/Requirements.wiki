@@ -3,6 +3,7 @@
 
 = System Requirements =
 
+  * Microsoft Windows Vista or higher
+  * Microsoft .NET framework 4.0 or higher [http://www.microsoft.com/en-us/download/details.aspx?id=17851 [download]]
   * RealTemp 3.6 or higher [http://www.techpowerup.com/realtemp/ [download]]
   * Afterburner 2.0 or higher [http://event.msi.com/vga/afterburner/download.htm [download]]
-  * Microsoft .NET framework 4.0 or higher [http://www.microsoft.com/en-us/download/details.aspx?id=17851 [download]]
